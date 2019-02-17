@@ -13,6 +13,8 @@ export default class ToHit extends React.Component {
       totals: [0, 0, 0, 0, 0, 0],
       colors: ['red', 'red', 'green', 'green', 'green', 'green'],
       skill: 3,
+      negative: 0,
+      alwaysHit: 0,
       hits: 0,
       averageHits: 0,
       reroll: "none",
@@ -25,9 +27,11 @@ export default class ToHit extends React.Component {
 
     this.changeMaxDice = this.changeMaxDice.bind(this);
     this.roll = this.roll.bind(this);
+    this.changeNegatives = this.changeNegatives.bind(this);
     this.changeSkill = this.changeSkill.bind(this);
     this.changeRerolls = this.changeRerolls.bind(this);
     this.changeExplodes = this.changeExplodes.bind(this);
+    this.changeAlways = this.changeAlways.bind(this);
   }
 
   changeMaxDice(text) {
@@ -39,13 +43,15 @@ export default class ToHit extends React.Component {
   }
 
   colorizeDice() {
-    let colors = this.state.colors;
-    skill = this.state.skill;
-    reroll = this.state.reroll;
-    explodes = this.state.explodes;
+    var colors = this.state.colors;
+    var skill = (this.state.skill -1);
+    var reroll = this.state.reroll;
+    var explodes = this.state.explodes;
+    var negative = this.state.negative;
+    var alwaysHit = this.state.alwaysHit;
 
     for (x = 0; x < 6; x++) {
-      if (x >= (skill - 1)) {
+      if (x >= (skill + negative)) {
         colors[x] = 'green';
         if (x == 4 && explodes == "fives") {
           colors[x] = 'purple';
@@ -56,10 +62,27 @@ export default class ToHit extends React.Component {
       } else {
         colors[x] = 'red';
         if (reroll == "misses") {
-          colors[x] = 'orange';
+          if(negative > 0 && x >= skill)
+          {
+            colors[x] = 'red';
+          } else {
+            colors[x] = 'orange';
+          }
         }
         if (reroll == "ones" && x == 0) {
           colors[x] = 'orange';
+        }
+      }
+      // final overide of always hit
+      if(alwaysHit != 0)
+      {
+        if(x == 4 && alwaysHit == 5)
+        {
+          colors[x] = 'blue';
+        }
+        if(x == 5 && (alwaysHit == 5 || alwaysHit == 6))
+        {
+          colors[x] = 'blue';
         }
       }
     }
@@ -67,11 +90,23 @@ export default class ToHit extends React.Component {
     
   }
 
+  changeNegatives(text)
+  {
+    var scope = this;
+    let negative = parseInt(text.trim());
+    this.setState({ negative }, () => scope.colorizeDice());
+  }
 
   changeSkill(text) {
     var scope = this;
     let skill = parseInt(text.trim());
     this.setState({ skill }, () => scope.colorizeDice());
+  }
+
+  changeAlways(text) {
+    var scope = this;
+    let alwaysHit = parseInt(text.trim());
+    this.setState({ alwaysHit }, () => scope.colorizeDice());
   }
 
   changeRerolls(text) {
@@ -90,11 +125,15 @@ export default class ToHit extends React.Component {
   roll() {
     this.toggleRollButton();
 
+    var skill = (this.state.skill -1);
+    var reroll = (this.state.reroll);
+    var negative = (this.state.negative);
+    var explodes = (this.state.explodes);
+    var alwaysHit = (this.state.alwaysHit);
 
-
-    var retObj1 = this.bigRoll(this.state.maxDice, ["First Roll", "Rerolls"]);
+    var retObj1 = this.bigRoll(this.state.maxDice, ["First Roll", "Rerolls"], skill, reroll, negative, explodes, alwaysHit);
     if (retObj1.exploded > 0) {
-      var retObj2 = this.bigRoll(retObj.exploded, ["Extra Hits", "Reroll Extra Hits"]);
+      var retObj2 = this.bigRoll(retObj.exploded, ["Extra Hits", "Reroll Extra Hits"], skill, reroll, negative, explodes, alwaysHit);
       retObj1.rolls = [...retObj1.rolls, ...retObj2.rolls];
       retObj1.totalHits = retObj1.totalHits + retObj2.totalHits;
       retObj1.diceRerolled = retObj1.diceRerolled + retObj2.diceRerolled;
@@ -102,7 +141,6 @@ export default class ToHit extends React.Component {
       for (x = 0; x < 6; x++) {
         retObj1.totals[x] += retObj2.totals[x];
       }
-
     }
 
     this.setState({
@@ -113,9 +151,6 @@ export default class ToHit extends React.Component {
       convertedMisses: retObj1.convertedMisses
     });
 
-    // this.setState({ totals: newTotals, hits: totalHits, rolls, diceRerolled: rerollDice, convertedMisses: secondRollHits });
-
-
     setTimeout(() => {
       this.toggleRollButton()
     }, 2000);
@@ -125,28 +160,21 @@ export default class ToHit extends React.Component {
     this.setState({ rollDisabled: !this.state.rollDisabled });
   }
 
-  bigRoll(diceToRoll, titles) {
+  bigRoll(diceToRoll, titles, skill, reroll, negative, explodes, alwaysHit) {
 
-
-    // this.setState({ convertedMisses: 0, diceRerolled: 0, averageHits: Math.round(this.state.maxDice * ((7 - this.state.skill) / 6)) });
     var firstRoll = this.rollDice(diceToRoll);
-
     let rolls = [];
     rolls.push({ totals: firstRoll, title: titles[0] });
 
-    var skill = (this.state.skill - 1);
-    var firstRollHits = this.calcHits(firstRoll, skill);
+    var firstRollHits = this.calcHits(firstRoll, skill, negative, alwaysHit);
 
     var secondRollHits = 0;
     var rerollDice = 0;
 
     let newTotals = [...firstRoll];
 
-    if (skill > 0 && this.state.reroll != "none") {
-
-      // count dice to reroll
-
-      if (this.state.reroll == "misses") {
+    if (skill > 0 && reroll != "none") {
+      if (reroll == "misses") {
         for (x = 0; x < skill; x++) {
           rerollDice += newTotals[x];
         }
@@ -155,11 +183,11 @@ export default class ToHit extends React.Component {
       }
 
       var rerollTotals = this.rollDice(rerollDice);
-      secondRollHits = this.calcHits(rerollTotals, skill);
+      secondRollHits = this.calcHits(rerollTotals, skill, negative, alwaysHit);
       rolls.push({ totals: rerollTotals, title: rerollDice + " " + titles[1] });
 
 
-      if (this.state.reroll == "misses") {
+      if (reroll == "misses") {
         for (x = 0; x < 6; x++) {
           if (x < skill) {
             newTotals[x] = rerollTotals[x];
@@ -183,7 +211,7 @@ export default class ToHit extends React.Component {
       rolls: rolls,
       diceRerolled: rerollDice,
       convertedMisses: secondRollHits,
-      exploded: this.calcExplodes(newTotals)
+      exploded: this.calcExplodes(newTotals, explodes)
     };
 
     return retObj;
@@ -198,22 +226,35 @@ export default class ToHit extends React.Component {
     return newTotals;
   }
 
-  calcExplodes(newTotals) {
-
-    if (this.state.explodes == "sixes") {
+  calcExplodes(newTotals, explodes) {
+    if (explodes == "sixes") {
       return newTotals[5];
     }
-    if (this.state.explodes == "fives") {
+    if (explodes == "fives") {
       return (newTotals[5] + newTotals[4]);
     }
     return 0;
   }
 
-  calcHits(newTotals, skill) {
+  calcHits(newTotals, skill, negative, alwaysHit) {
+
+    var included = [];
+
     var hits = 0;
-    for (x = 5; x >= skill; x--) {
+    for (x = 5; x >= (skill + negative); x--) {
+      included.push(x);
       hits += newTotals[x];
     }
+
+    if((alwaysHit == 6 || alwaysHit == 5) && !included.indexOf(5) > -1)
+    {
+      hits += newTotals[5];
+    }
+    if(alwaysHit == 5 && !included.indexOf(4) > -1)
+    {
+      hits += newTotals[4];
+    }
+
     return hits;
   }
 
@@ -269,11 +310,19 @@ export default class ToHit extends React.Component {
 
   render() {
     return (
-
-
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hits} adjustsFontSizeToFit
           numberOfLines={1}>{this.state.hits} Hits / {this.state.averageHits} Avg.</Text>
+
+        <View style={styles.diceContainer}>
+          <Dice side={1} total={this.state.totals[0]} strokeColor={this.state.colors[0]} />
+          <Dice side={2} total={this.state.totals[1]} strokeColor={this.state.colors[1]} />
+          <Dice side={3} total={this.state.totals[2]} strokeColor={this.state.colors[2]} />
+          <Dice side={4} total={this.state.totals[3]} strokeColor={this.state.colors[3]} />
+          <Dice side={5} total={this.state.totals[4]} strokeColor={this.state.colors[4]} />
+          <Dice side={6} total={this.state.totals[5]} strokeColor={this.state.colors[5]} />
+        </View>
+
         <Item regular>
           <Label>Total Dice</Label>
           <Input value={this.state.maxDice.toString()} keyboardType='number-pad' onChangeText={this.changeMaxDice} />
@@ -298,7 +347,6 @@ export default class ToHit extends React.Component {
             <Picker.Item label="6 (Give Up)" value="6" />
           </Picker>
         </Item>
-
         <Item picker>
           <Label>Reroll</Label>
           <Picker
@@ -316,7 +364,6 @@ export default class ToHit extends React.Component {
             <Picker.Item label="All Misses" value="misses" />
           </Picker>
         </Item>
-
         <Item picker>
           <Label>Generates To Hit</Label>
           <Picker
@@ -334,25 +381,51 @@ export default class ToHit extends React.Component {
             <Picker.Item label="On 6" value="sixes" />
           </Picker>
         </Item>
-
+        <Item picker>
+          <Label>Negative Modifier</Label>
+          <Picker
+            mode="dropdown"
+            iosIcon={<Icon name="arrow-down" />}
+            style={{ width: undefined }}
+            placeholder="Please Select"
+            placeholderStyle={{ color: "#bfc6ea" }}
+            placeholderIconColor="#007aff"
+            selectedValue={this.state.negative.toString()}
+            onValueChange={this.changeNegatives}
+          >
+            <Picker.Item label="None" value="0" />
+            <Picker.Item label="-1" value="1" />
+            <Picker.Item label="-2" value="2" />
+            <Picker.Item label="-3" value="3" />
+            <Picker.Item label="-4" value="4" />
+            <Picker.Item label="-5" value="5" />
+            <Picker.Item label="-6" value="6" />
+          </Picker>
+        </Item>
+        <Item picker>
+          <Label>Always Hits On</Label>
+          <Picker
+            mode="dropdown"
+            iosIcon={<Icon name="arrow-down" />}
+            style={{ width: undefined }}
+            placeholder="Please Select"
+            placeholderStyle={{ color: "#bfc6ea" }}
+            placeholderIconColor="#007aff"
+            selectedValue={this.state.alwaysHit.toString()}
+            onValueChange={this.changeAlways}
+          >
+            <Picker.Item label="Disabled" value="0" />
+            <Picker.Item label="6's" value="6" />
+            <Picker.Item label="5's" value="5" />
+          </Picker>
+        </Item>
         <Button block onPress={this.roll} disabled={this.state.rollDisabled}><Text>Roll to Hit</Text></Button>
-
         <Text>Actual Hits: {this.state.hits}</Text>
         <Text>Converted Misses: {this.state.convertedMisses}</Text>
         <Text>Unconverted Misses: {this.state.diceRerolled - this.state.convertedMisses}</Text>
         <Text>Total Rerolled: {this.state.diceRerolled}</Text>
-        <View style={styles.diceContainer}>
-          <Dice side={1} total={this.state.totals[0]} strokeColor={this.state.colors[0]} />
-          <Dice side={2} total={this.state.totals[1]} strokeColor={this.state.colors[1]} />
-          <Dice side={3} total={this.state.totals[2]} strokeColor={this.state.colors[2]} />
-          <Dice side={4} total={this.state.totals[3]} strokeColor={this.state.colors[3]} />
-          <Dice side={5} total={this.state.totals[4]} strokeColor={this.state.colors[4]} />
-          <Dice side={6} total={this.state.totals[5]} strokeColor={this.state.colors[5]} />
-        </View>
-
+        
         <RollResults results={this.state.rolls} />
-
-
       </ScrollView>
     );
   }
