@@ -24,6 +24,8 @@
     ],
     "ios": {
       "supportsTablet": true
-    }
+    },
+    "description": "Simulator for bulk rolling of large amounts of dice for Warhammer 40K",
+    "githubUrl": "https://github.com/taylorcullen/bulk-dice-roller"
   }
 }
