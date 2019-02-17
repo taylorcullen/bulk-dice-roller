@@ -122,6 +122,29 @@ export default class ToHit extends React.Component {
 
   }
 
+  calcAverage()
+  {
+    var skill = (this.state.skill -1);
+    var reroll = (this.state.reroll);
+    var negative = (this.state.negative);
+    var explodes = (this.state.explodes);
+    var alwaysHit = (this.state.alwaysHit);
+
+    var retObj1 = this.bigRoll(this.state.maxDice, ["First Roll", "Rerolls"], skill, reroll, negative, explodes, alwaysHit, true);
+    if (retObj1.exploded > 0) {
+      var retObj2 = this.bigRoll(retObj.exploded, ["Extra Hits", "Reroll Extra Hits"], skill, reroll, negative, explodes, alwaysHit, true);
+      retObj1.rolls = [...retObj1.rolls, ...retObj2.rolls];
+      retObj1.totalHits = retObj1.totalHits + retObj2.totalHits;
+      retObj1.diceRerolled = retObj1.diceRerolled + retObj2.diceRerolled;
+      retObj1.convertedMisses = retObj1.convertedMisses + retObj2.convertedMisses;
+      for (x = 0; x < 6; x++) {
+        retObj1.totals[x] += retObj2.totals[x];
+      }
+    }
+
+    return retObj1.totalHits;
+  }
+
   roll() {
     this.toggleRollButton();
 
@@ -131,9 +154,9 @@ export default class ToHit extends React.Component {
     var explodes = (this.state.explodes);
     var alwaysHit = (this.state.alwaysHit);
 
-    var retObj1 = this.bigRoll(this.state.maxDice, ["First Roll", "Rerolls"], skill, reroll, negative, explodes, alwaysHit);
+    var retObj1 = this.bigRoll(this.state.maxDice, ["First Roll", "Rerolls"], skill, reroll, negative, explodes, alwaysHit, false);
     if (retObj1.exploded > 0) {
-      var retObj2 = this.bigRoll(retObj.exploded, ["Extra Hits", "Reroll Extra Hits"], skill, reroll, negative, explodes, alwaysHit);
+      var retObj2 = this.bigRoll(retObj.exploded, ["Extra Hits", "Reroll Extra Hits"], skill, reroll, negative, explodes, alwaysHit, false);
       retObj1.rolls = [...retObj1.rolls, ...retObj2.rolls];
       retObj1.totalHits = retObj1.totalHits + retObj2.totalHits;
       retObj1.diceRerolled = retObj1.diceRerolled + retObj2.diceRerolled;
@@ -160,9 +183,16 @@ export default class ToHit extends React.Component {
     this.setState({ rollDisabled: !this.state.rollDisabled });
   }
 
-  bigRoll(diceToRoll, titles, skill, reroll, negative, explodes, alwaysHit) {
+  bigRoll(diceToRoll, titles, skill, reroll, negative, explodes, alwaysHit, fake) {
 
-    var firstRoll = this.rollDice(diceToRoll);
+    var firstRoll = [];
+    if(!fake)
+    {
+      firstRoll = this.rollDice(diceToRoll);
+    } else {
+      firstRoll = this.rollFakeDice(diceToRoll);
+    }
+
     let rolls = [];
     rolls.push({ totals: firstRoll, title: titles[0] });
 
@@ -182,7 +212,13 @@ export default class ToHit extends React.Component {
         rerollDice = newTotals[0];
       }
 
-      var rerollTotals = this.rollDice(rerollDice);
+      var rerollTotals = [];
+      if(!fake)
+      {
+        rerollTotals = this.rollDice(rerollDice);
+      } else {
+        rerollTotals = this.rollFakeDice(rerollDice);
+      }
       secondRollHits = this.calcHits(rerollTotals, skill, negative, alwaysHit);
       rolls.push({ totals: rerollTotals, title: rerollDice + " " + titles[1] });
 
@@ -226,6 +262,12 @@ export default class ToHit extends React.Component {
     return newTotals;
   }
 
+  rollFakeDice(totalDice) {
+    var average = Math.floor(totalDice / 6);
+    var newTotals = [average, average, average, average, average, average];
+    return newTotals;
+  }
+
   calcExplodes(newTotals, explodes) {
     if (explodes == "sixes") {
       return newTotals[5];
@@ -258,7 +300,8 @@ export default class ToHit extends React.Component {
     return hits;
   }
 
-  calcAverage() {
+
+  calcOldAverage() {
     var dice = this.state.maxDice;
     var skill = this.state.skill;
     var explodes = this.state.explodes;

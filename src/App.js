@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Font, AppLoading } from 'expo';
 import ToHit from './screens/ToHit'; 
+import ToWound from './screens/ToWound';
 
 // This is used in order to see requests on the Chrome DevTools
 XMLHttpRequest = GLOBAL.originalXMLHttpRequest ? GLOBAL.originalXMLHttpRequest : GLOBAL.XMLHttpRequest;
