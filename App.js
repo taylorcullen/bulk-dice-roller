@@ -1,10 +1,9 @@
 import React from 'react';
-import { store, persistor } from './redux';
+import { store, persistor } from './src/redux';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Font, AppLoading } from 'expo';
-import ToHit from './screens/ToHit'; 
-import ToWound from './screens/ToWound';
+import BulkRoller from './src/screens/BulkRoller';
 
 // This is used in order to see requests on the Chrome DevTools
 XMLHttpRequest = GLOBAL.originalXMLHttpRequest ? GLOBAL.originalXMLHttpRequest : GLOBAL.XMLHttpRequest;
@@ -31,7 +30,7 @@ export default class App extends React.Component {
     return (
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
-          {!this.state.fontLoaded ? <AppLoading/> : <ToHit/>}
+          {!this.state.fontLoaded ? <AppLoading/> : <BulkRoller/>}
         </PersistGate>
       </Provider>
     );
